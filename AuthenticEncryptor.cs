@@ -5,19 +5,21 @@ namespace Dotnet.AuthentificationMode
 {
     public class AuthenticEncryptor : IDisposable   // AES-CTR and HMAC-SHA-256
     {
-        private const int MAC_SIZE = 32;
-        private const int DATA_BLOCK_SIZE = 16;
+        private byte[] Buffer { get; set; }
+        private byte[] Mac { get; set; }
+        private ICryptoTransform Aes128Encryptor { get; set; }
+        private HMACSHA256 HMacSha256 { get; set; }
         
         private readonly Mode _mode;
         
+        private const int MAC_SIZE = 32;
+        private const int DATA_BLOCK_SIZE = 16;
+
         private int _offset;
+
         public byte[] IV { get; set; }
-        private byte[] Buffer { get; set; }
-        private byte[] Mac { get; set; }
         public  byte[] Key { get; set; }
         public byte[] MacKey { get; set; }
-        private ICryptoTransform Aes128Encryptor { get; set; }
-        private HMACSHA256 HMacSha256 { get; set; }
         
         public AuthenticEncryptor(Mode mode)
         {
@@ -57,7 +59,12 @@ namespace Dotnet.AuthentificationMode
         
         private byte[] Decrypt(byte[] data)
         {
-            IV = data[..DATA_BLOCK_SIZE];
+            if (data.Length < DATA_BLOCK_SIZE)
+            {
+                throw new ArgumentException("invalid data size");
+            }
+            
+            IV = data?[..DATA_BLOCK_SIZE];
             
             Initialize();
             
@@ -73,7 +80,7 @@ namespace Dotnet.AuthentificationMode
 
             AddBlock(insideData[(DATA_BLOCK_SIZE * (iterations-1))..], true);
 
-            if (!LogicHelper.IsEqual(possibleMac,  HMacSha256.Hash))
+            if (!LogicHelper.AreEqual(possibleMac,  HMacSha256.Hash))
             {
                 Console.WriteLine("Mac and cipher mac aren't equal! The message was transformed...");
             }
@@ -97,6 +104,8 @@ namespace Dotnet.AuthentificationMode
                         HMacSha256.TransformFinalBlock(dataBlock,0,  dataBlock.Length);
                         Mac = HMacSha256.Hash;
                         break;
+                    default:
+                        throw new NotImplementedException("This mode wasn't implemented yet!");
                 }
             }
             else
@@ -115,6 +124,8 @@ namespace Dotnet.AuthentificationMode
                         _offset += HMacSha256.TransformBlock(
                             dataBlock, 0, dataBlock.Length, Mac, _offset);
                         break;
+                    default:
+                        throw new NotImplementedException("This mode wasn't implemented yet!");
                 }
             }
             Buffer = LogicHelper.Сoncatenate(Buffer, dataBlock);
@@ -129,7 +140,7 @@ namespace Dotnet.AuthentificationMode
             using (Aes aes128 = Aes.Create())
             {
                 aes128.Key = Key;
-                aes128.IV = IV;
+                aes128.IV = IV ??= Salt.CreateSalt(DATA_BLOCK_SIZE);
                 aes128.Padding = PaddingMode.None;
                 aes128.Mode = CipherMode.CFB;
 
@@ -145,7 +156,7 @@ namespace Dotnet.AuthentificationMode
             }
 
             HMacSha256 ??= new HMACSHA256();
-            HMacSha256.Key = MacKey;
+            HMacSha256.Key = MacKey ??= Salt.CreateSalt(DATA_BLOCK_SIZE);
             HMacSha256.Initialize();
         }
 
