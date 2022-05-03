@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Dotnet.AuthentificationMode
 {
     public static class LogicHelper
@@ -12,22 +14,13 @@ namespace Dotnet.AuthentificationMode
             return resulted;
         }
         
-        public static bool IsEqual(byte[] first, byte[] second)
+        [MethodImpl(MethodImplOptions.NoOptimization)]
+        public static bool AreEqual(byte[] a, byte[] b)
         {
-            if (first.Length == second.Length)
-            {
-                for (int i = 0; i < first.Length; ++i)
-                {
-                    if (first[i] != second[i])
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-
-            return false;
+            uint diff = (uint)a.Length ^ (uint)b.Length;
+            for (int i = 0; i < a.Length && i < b.Length; i++)
+                diff |= (uint)(a[i] ^ b[i]);
+            return diff == 0;
         }
     }
 }
