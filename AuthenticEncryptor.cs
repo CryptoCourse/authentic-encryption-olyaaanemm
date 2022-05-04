@@ -152,12 +152,16 @@ namespace Dotnet.AuthentificationMode
                     case Mode.Encryption:
                         Aes128Encryptor = aes128.CreateEncryptor();
                         break;
+                    default:
+                        throw new NotImplementedException("The mode wasn't implemented yest!");
                 }
             }
 
             HMacSha256 ??= new HMACSHA256();
             HMacSha256.Key = MacKey ??= Salt.CreateSalt(DATA_BLOCK_SIZE);
             HMacSha256.Initialize();
+            _offset += HMacSha256.TransformBlock(
+                IV, 0, IV.Length, Mac, _offset);
         }
 
         public void Dispose()
