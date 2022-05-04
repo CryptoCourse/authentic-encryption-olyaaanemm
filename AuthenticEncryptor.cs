@@ -140,16 +140,17 @@ namespace Dotnet.AuthentificationMode
             using (Aes aes128 = Aes.Create())
             {
                 aes128.Key = Key;
-                aes128.IV = IV ??= Salt.CreateSalt(DATA_BLOCK_SIZE);
                 aes128.Padding = PaddingMode.None;
                 aes128.Mode = CipherMode.CFB;
 
                 switch (_mode)
                 {
                     case Mode.Decryption:
+                        aes128.IV = IV ?? throw new ArgumentException("Empty IV for decryption!");
                         Aes128Encryptor = aes128.CreateDecryptor();
                         break;
                     case Mode.Encryption:
+                        aes128.IV = IV ??= Salt.CreateSalt(DATA_BLOCK_SIZE);
                         Aes128Encryptor = aes128.CreateEncryptor();
                         break;
                     default:
